@@ -8,7 +8,7 @@
                 <div class="header">
                     <div class="text-group">
                         <h2>Create account</h2>
-                        <p class="mb-4">Already have an account? <a href="#">Login</a></p>
+                        <p class="mb-4">Already have an account? <router-link to="/auth/login">Login</router-link></p>
                     </div>
                 </div>
 
@@ -17,8 +17,9 @@
                         <img src="../../assets/icons/google.svg" alt="" class="icon">
                         Continue with Google
                     </button>
-                    <button class="social-button">
-                        <img src="../../assets/icons/phone.svg" alt="" class="icon"> Continue with Phone
+                    <button class="social-button" @click="toggleInputMode">
+                        <img :src="inputMode === 'email' ? number : gmail" alt="" class="icon">
+                        Continue with {{ inputMode === 'email' ? 'Phone' : 'Email' }}
                     </button>
                 </div>
 
@@ -27,8 +28,25 @@
                 </div>
 
                 <div class="div">
-                    <label class="left">Continue with Email</label>
-                    <input type="email" v-model="email" placeholder="Enter Email" />
+                    <label class="left">Continue with {{ inputMode === 'email' ? 'Email' : 'Phone' }}</label>
+
+                    <!-- Email input -->
+                    <input v-if="inputMode === 'email'" type="email" v-model="email" placeholder="Enter Email"
+                        pattern="[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$" @input="validateEmail"
+                        :class="{ 'error': emailError }" />
+
+                    <!-- Phone input -->
+                    <div v-else class="phone-input-container">
+                        <div class="country-code">
+                            <p>+234</p>
+                        </div>
+                        <input type="tel" inputmode="numeric" v-model="phone" placeholder="Enter number"
+                            pattern="[0-9]{10}" @input="validatePhone" :class="{ 'error': phoneError }"
+                            maxlength="10" />
+                    </div>
+
+                    <span v-if="emailError" class="error-message">Please enter a valid email address</span>
+                    <span v-if="phoneError" class="error-message">Please enter a valid 10-digit phone number</span>
                 </div>
 
                 <div class="checkbox-group">
@@ -67,31 +85,23 @@
                 <div class="close-button" @click="step = 2">
                     <img src="../../assets/icons/back.svg" alt="">
                 </div>
-                <h2 class="">Check your email</h2>
-                
+                <h2 class="">Check your {{ inputMode === 'email' ? 'email' : 'inbox' }}</h2>
+
                 <div class="bottom">
-                    <p class="mb-7">We sent a 6-digit code to <strong>{{ email }}</strong>. Code expires soon (Check your inbox and spam)</p>
-                    
+                    <p class="mb-7">We sent a 6-digit code to <strong>{{ inputMode === 'email' ? email : '+1 ' + phone
+                            }}</strong>. Code expires soon {{ inputMode === 'email' ? '(Check your inbox and spam)' : ''
+                            }}</p>
+
                     <div class="otp-container">
-                        <input 
-                            v-for="(digit, index) in 6" 
-                            :key="index"
-                            ref="otpInputs"
-                            type="text" 
-                            inputmode="numeric"
-                            maxlength="1"
-                            v-model="otpDigits[index]"
-                            @input="handleOtpInput(index)"
-                            @keydown="handleKeydown($event, index)"
-                            @paste="handlePaste"
-                            @keydown.delete="handleDelete(index)"
-                            class="otp-input"
-                            :class="{ 'filled': otpDigits[index] }"
-                        />
+                        <input v-for="(digit, index) in 6" :key="index" ref="otpInputs" type="text" inputmode="numeric"
+                            maxlength="1" v-model="otpDigits[index]" @input="handleOtpInput(index)"
+                            @keydown="handleKeydown($event, index)" @paste="handlePaste"
+                            @keydown.delete="handleDelete(index)" class="otp-input"
+                            :class="{ 'filled': otpDigits[index] }" />
                     </div>
-                    
+
                     <button class="continue-btn" @click="verifyCode">Continue</button>
-                    
+
                     <div class="verification-options">
                         <p v-if="countdown > 0" class="countdown">Request a new code in {{ countdown }} seconds</p>
                         <p v-else class="resend-option" @click="resetCountdown">Request a new code</p>
@@ -106,9 +116,16 @@
 import { ref, onMounted, onUnmounted, watch, computed } from 'vue';
 import eyeOpen from '../../assets/icons/eye-open.svg';
 import eyeClose from '../../assets/icons/eye-closed.svg';
+import number from '../../assets/icons/phone.svg';
+import gmail from '../../assets/icons/emai.svg';
+import { useRouter } from 'vue-router';
+
+const router = useRouter();
 
 const step = ref(1);
 const email = ref('');
+const phone = ref('');
+const inputMode = ref('email'); // 'email' or 'phone'
 const agreed = ref(false);
 const password = ref('');
 const passwordError = ref(false);
@@ -116,18 +133,49 @@ const showPassword = ref(false);
 const otpDigits = ref(['', '', '', '', '', '']);
 const otpInputs = ref([]);
 const countdown = ref(30);
+const emailError = ref(false);
+const phoneError = ref(false);
 let countdownTimer = null;
+
+const validateEmail = () => {
+  const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/;
+  emailError.value = !emailRegex.test(email.value);
+};
+
+const validatePhone = () => {
+  // Remove any non-numeric characters
+  phone.value = phone.value.replace(/\D/g, '');
+  phoneError.value = phone.value.length !== 10;
+};
+
+watch(inputMode, () => {
+  emailError.value = false;
+  phoneError.value = false;
+});
+
+const nextStep = () => {
+  if (inputMode.value === 'email') {
+    validateEmail();
+    if (!emailError.value && email.value && agreed.value) {
+      step.value = 2;
+    }
+  } else {
+    validatePhone();
+    if (!phoneError.value && phone.value && agreed.value) {
+      step.value = 2;
+    }
+  }
+};
+
+// Toggle between email and phone input modes
+const toggleInputMode = () => {
+    inputMode.value = inputMode.value === 'email' ? 'phone' : 'email';
+};
 
 // Computed property to get the complete verification code from individual digits
 const verificationCode = computed(() => {
     return otpDigits.value.join('');
 });
-
-const nextStep = () => {
-    if (email.value && agreed.value) {
-        step.value = 2;
-    }
-};
 
 const togglePasswordVisibility = () => {
     showPassword.value = !showPassword.value;
@@ -152,7 +200,7 @@ const validatePassword = () => {
 const handleOtpInput = (index) => {
     // Force digits only
     otpDigits.value[index] = otpDigits.value[index].replace(/[^0-9]/g, '');
-    
+
     // Auto-forward to next input when a digit is entered
     if (otpDigits.value[index] && index < 5 && otpInputs.value[index + 1]) {
         otpInputs.value[index + 1].focus();
@@ -180,14 +228,14 @@ const handlePaste = (event) => {
     event.preventDefault();
     const pastedData = event.clipboardData.getData('text');
     const numericData = pastedData.replace(/[^0-9]/g, '').substring(0, 6);
-    
+
     // Fill in the OTP fields with pasted data
     for (let i = 0; i < numericData.length; i++) {
         if (i < 6) {
             otpDigits.value[i] = numericData[i];
         }
     }
-    
+
     // Focus on the next empty input or the last input if all filled
     const nextEmptyIndex = otpDigits.value.findIndex(digit => !digit);
     if (nextEmptyIndex !== -1 && otpInputs.value[nextEmptyIndex]) {
@@ -224,7 +272,7 @@ const resetCountdown = () => {
 const verifyCode = () => {
     // Get the complete verification code
     const code = verificationCode.value;
-    
+
     // Add your verification logic here
     if (code.length === 6) {
         alert('Verification successful! Account created.');
@@ -364,13 +412,42 @@ a {
     margin-left: .25em;
 }
 
-input[type="email"] {
+input[type="email"],
+input[type="tel"] {
     width: 100%;
     padding: 0.8rem;
-    margin: 0.5rem 0 1rem;
+    margin: 0;
     border: 1px solid #ccc;
     border-radius: 6px;
     box-sizing: border-box;
+}
+
+/* Phone input styling */
+.phone-input-container {
+    display: flex;
+    align-items: center;
+    margin: 0.5rem 0 1rem;
+    width: 100%;
+}
+
+.country-code {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.7rem;
+    border: 1px solid rgba(146, 146, 146, 0.60);
+    border-radius: 6px 0 0 6px;
+    color: #757575;
+    border-right: none;
+    font-family: 14px !important;
+    min-width: 50px;
+}
+
+.phone-input-container input {
+    flex: 1;
+    margin: 0;
+    font-size: 14px; 
+    border-radius: 0 6px 6px 0;
 }
 
 .checkbox-group {
@@ -379,6 +456,7 @@ input[type="email"] {
     font-size: 0.85em;
     margin-bottom: 1.5rem;
     gap: 8px;
+    margin-top: 10px;
 }
 
 .continue-button {
@@ -467,8 +545,7 @@ input[type="email"] {
 .error-message {
     color: #C00 !important;
     font-size: 14px;
-    margin-top: 8px;
-    margin-bottom: 8px;
+    margin-bottom: 10px !important;
 }
 
 /* OTP Input Styling */
@@ -521,10 +598,12 @@ input[type="email"] {
 }
 
 @media (max-width: 768px) {
-    .signup-form, .form2 {
+
+    .signup-form,
+    .form2 {
         padding: 20px;
     }
-    
+
     .otp-input {
         width: 40px;
         height: 40px;
