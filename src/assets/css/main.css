@@ -53,6 +53,14 @@
     margin-bottom: 50px;
 }
 
+.mb-6{
+    margin-bottom: 60px;
+}
+
+.mb-7{
+    margin-bottom: 70px;
+}
+
 /* paddings */
 .p-1 {
     padding: 10px;
