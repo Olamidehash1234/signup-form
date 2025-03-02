@@ -47,18 +47,18 @@
     margin-bottom: 30px;
 }
 .mb-4 {
-    margin-bottom: 40px;
+    margin-bottom: 40px !important;
 }
 .mb-5 {
-    margin-bottom: 50px;
+    margin-bottom: 50px !important;
 }
 
 .mb-6{
-    margin-bottom: 60px;
+    margin-bottom: 60px !important;
 }
 
 .mb-7{
-    margin-bottom: 70px;
+    margin-bottom: 70px !important;
 }
 
 /* paddings */
